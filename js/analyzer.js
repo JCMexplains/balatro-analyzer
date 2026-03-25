@@ -201,25 +201,66 @@ const BalatroAnalyzer = (() => {
         const effect = {};
 
         switch (name) {
+            // --- Basic Joker ---
             case 'joker': effect.addMult = 4; break;
-            case 'greedy joker': effect.addMult = 3 * scoringCards.filter(c => c.suit === 'Diamonds').length; break;
-            case 'lusty joker': effect.addMult = 3 * scoringCards.filter(c => c.suit === 'Hearts').length; break;
-            case 'wrathful joker': effect.addMult = 3 * scoringCards.filter(c => c.suit === 'Spades').length; break;
-            case 'gluttonous joker': effect.addMult = 3 * scoringCards.filter(c => c.suit === 'Clubs').length; break;
+
+            // --- Suit Mult Jokers (+4 Mult per suited scoring card) ---
+            case 'greedy joker': effect.addMult = 4 * scoringCards.filter(c => c.suit === 'Diamonds').length; break;
+            case 'lusty joker': effect.addMult = 4 * scoringCards.filter(c => c.suit === 'Hearts').length; break;
+            case 'wrathful joker': effect.addMult = 4 * scoringCards.filter(c => c.suit === 'Spades').length; break;
+            case 'gluttonous joker': effect.addMult = 4 * scoringCards.filter(c => c.suit === 'Clubs').length; break;
+
+            // --- Hand Type Mult Jokers ---
             case 'jolly joker': if (hasPair(scoringCards)) effect.addMult = 8; break;
             case 'zany joker': if (hasThreeOfAKind(scoringCards)) effect.addMult = 12; break;
             case 'mad joker': if (hasTwoPair(scoringCards)) effect.addMult = 10; break;
             case 'crazy joker': if (['Straight', 'Straight Flush'].includes(handType)) effect.addMult = 12; break;
             case 'droll joker': if (['Flush', 'Flush House', 'Flush Five', 'Straight Flush'].includes(handType)) effect.addMult = 10; break;
+
+            // --- Hand Type Chips Jokers ---
             case 'sly joker': if (hasPair(scoringCards)) effect.addChips = 50; break;
             case 'wily joker': if (hasThreeOfAKind(scoringCards)) effect.addChips = 100; break;
             case 'clever joker': if (hasTwoPair(scoringCards)) effect.addChips = 80; break;
             case 'devious joker': if (['Straight', 'Straight Flush'].includes(handType)) effect.addChips = 100; break;
             case 'crafty joker': if (['Flush', 'Flush House', 'Flush Five', 'Straight Flush'].includes(handType)) effect.addChips = 80; break;
+
+            // --- Card Count ---
             case 'half joker': if (cards.length <= 3) effect.addMult = 20; break;
+
+            // --- Rank-based Chips/Mult ---
             case 'scary face': effect.addChips = 30 * scoringCards.filter(c => ['J', 'Q', 'K'].includes(c.rank)).length; break;
-            case 'abstract joker': effect.addMult = 3 * (joker._jokerCount || 1); break;
-            case 'stuntman': effect.addChips = 250; break;
+            case 'smiley face': effect.addMult = 5 * scoringCards.filter(c => ['J', 'Q', 'K'].includes(c.rank)).length; break;
+            case 'even steven': effect.addMult = 4 * scoringCards.filter(c => ['10', '8', '6', '4', '2'].includes(c.rank)).length; break;
+            case 'odd todd': effect.addChips = 31 * scoringCards.filter(c => ['A', '9', '7', '5', '3'].includes(c.rank)).length; break;
+            case 'scholar': {
+                const aces = scoringCards.filter(c => c.rank === 'A').length;
+                effect.addChips = 20 * aces;
+                effect.addMult = 4 * aces;
+                break;
+            }
+            case 'walkie talkie': {
+                const tens_and_fours = scoringCards.filter(c => c.rank === '10' || c.rank === '4').length;
+                effect.addChips = 10 * tens_and_fours;
+                effect.addMult = 4 * tens_and_fours;
+                break;
+            }
+            case 'fibonacci': effect.addMult = 8 * scoringCards.filter(c => ['A', '2', '3', '5', '8'].includes(c.rank)).length; break;
+
+            // --- Suit-based Chips/Mult (Uncommon gem jokers) ---
+            case 'arrowhead': effect.addChips = 50 * scoringCards.filter(c => c.suit === 'Spades').length; break;
+            case 'onyx agate': effect.addMult = 7 * scoringCards.filter(c => c.suit === 'Clubs').length; break;
+
+            // --- Held-in-hand Jokers ---
+            case 'shoot the moon': {
+                const heldQueens = cards.filter(c => !scoringCards.includes(c) && c.rank === 'Q').length;
+                effect.addMult = 13 * heldQueens;
+                break;
+            }
+            case 'baron': {
+                const heldKings = cards.filter(c => !scoringCards.includes(c) && c.rank === 'K').length;
+                if (heldKings > 0) effect.xMult = Math.pow(1.5, heldKings);
+                break;
+            }
             case 'raised fist': {
                 const held = cards.filter(c => !scoringCards.includes(c));
                 if (held.length > 0) {
@@ -228,12 +269,33 @@ const BalatroAnalyzer = (() => {
                 }
                 break;
             }
+
+            // --- Joker Count ---
+            case 'abstract joker': effect.addMult = 3 * (joker._jokerCount || 1); break;
+
+            // --- Static Chips ---
+            case 'stuntman': effect.addChips = 250; break;
+
+            // --- Condition-based xMult ---
             case 'blackboard': if (cards.every(c => c.suit === 'Spades' || c.suit === 'Clubs')) effect.xMult = 3; break;
             case 'the duo': if (hasPair(scoringCards)) effect.xMult = 2; break;
             case 'the trio': if (hasThreeOfAKind(scoringCards)) effect.xMult = 3; break;
             case 'the family': if (hasFourOfAKind(scoringCards)) effect.xMult = 4; break;
             case 'the order': if (['Straight', 'Straight Flush'].includes(handType)) effect.xMult = 3; break;
             case 'the tribe': if (['Flush', 'Flush House', 'Flush Five', 'Straight Flush'].includes(handType)) effect.xMult = 2; break;
+            case 'flower pot': {
+                const scoringSuits = new Set(scoringCards.map(c => c.suit));
+                if (scoringSuits.has('Hearts') && scoringSuits.has('Diamonds') && scoringSuits.has('Clubs') && scoringSuits.has('Spades')) {
+                    effect.xMult = 3;
+                }
+                break;
+            }
+            case 'seeing double': {
+                const hasClub = scoringCards.some(c => c.suit === 'Clubs');
+                const hasOther = scoringCards.some(c => c.suit !== 'Clubs');
+                if (hasClub && hasOther) effect.xMult = 2;
+                break;
+            }
         }
 
         return effect;
