@@ -394,10 +394,9 @@ const App = (() => {
         var model = els.modelSelect.value;
 
         var localPlays = BalatroAnalyzer.findAllPlays(
-            gameState.handCards || [],
-            gameState.handLevels || {},
-            gameState.jokers || []
+            gameState.handCards || [], gameState.handLevels || {}, gameState.jokers || [], gameState
         );
+
         var topPlays = localPlays.slice(0, 10).map(function(p) {
             return {
                 cards: p.cards.map(function(c) { return c.rank + c.suit[0]; }),
