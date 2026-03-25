@@ -157,7 +157,7 @@ const BalatroAnalyzer = (() => {
         return false;
     }
 
-    function calculateScore(cards, handType, handLevels = {}, jokers = []) {
+    function calculateScore(cards, handType, handLevels = {}, jokers = [], gameState = {}) {
         const level = handLevels[handType] || 1;
         const handScore = getHandScore(handType, level);
         const { scoringCards } = identifyHand(cards);
@@ -171,14 +171,14 @@ const BalatroAnalyzer = (() => {
         let mult = handScore.mult;
 
         for (const joker of jokers) {
-            const effect = getSimpleJokerEffect(joker, cards, handType, scoringCards);
+            const effect = getSimpleJokerEffect(joker, cards, handType, scoringCards, gameState);
             chips += effect.addChips || 0;
             mult += effect.addMult || 0;
         }
 
         let xMult = 1;
         for (const joker of jokers) {
-            const effect = getSimpleJokerEffect(joker, cards, handType, scoringCards);
+            const effect = getSimpleJokerEffect(joker, cards, handType, scoringCards, gameState);
             xMult *= effect.xMult || 1;
         }
 
@@ -196,7 +196,7 @@ const BalatroAnalyzer = (() => {
         };
     }
 
-    function getSimpleJokerEffect(joker, cards, handType, scoringCards) {
+    function getSimpleJokerEffect(joker, cards, handType, scoringCards, gameState = {}) {
         const name = (joker.name || '').toLowerCase();
         const effect = {};
 
@@ -296,6 +296,19 @@ const BalatroAnalyzer = (() => {
                 if (hasClub && hasOther) effect.xMult = 2;
                 break;
             }
+
+            // --- Game State Jokers (read from screenshot) ---
+            case 'banner': effect.addChips = 40 * (gameState.discardsLeft || 0); break;
+            case 'mystic summit': if ((gameState.discardsLeft || 0) === 0) effect.addMult = 15; break;
+            case 'acrobat': if ((gameState.handsLeft || 0) === 1) effect.xMult = 3; break;
+            case 'bull': effect.addChips = 2 * (gameState.money || 0); break;
+            case 'bootstraps': effect.addMult = 2 * Math.floor((gameState.money || 0) / 5); break;
+            case 'castle': effect.addChips = joker.currentChips || 0; break;
+            case 'erosion': {
+                const missing = Math.max(0, 52 - (gameState.deckRemaining || 52));
+                effect.addMult = 4 * missing;
+                break;
+            }
         }
 
         return effect;
@@ -312,13 +325,13 @@ const BalatroAnalyzer = (() => {
         return counts;
     }
 
-    function findAllPlays(handCards, handLevels = {}, jokers = []) {
+    function findAllPlays(handCards, handLevels = {}, jokers = [], gameState = {}) {
         const plays = [];
         for (let size = 1; size <= Math.min(5, handCards.length); size++) {
             const combos = combinations(handCards, size);
             for (const combo of combos) {
                 const hand = identifyHand(combo);
-                const score = calculateScore(combo, hand.type, handLevels, jokers);
+                const score = calculateScore(combo, hand.type, handLevels, jokers, gameState);
                 plays.push({ cards: combo, ...score });
             }
         }
